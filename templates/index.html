@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Face Recognition Attendance System</title>
+<style>
+:root {
+    --primary-color: #007bff;
+    --secondary-color: #28a745;
+    --info-color: #17a2b8;
+    --danger-color: #dc3545;
+    --warning-color: #ffc107;
+    --background-light: #f4f7f9;
+    --background-white: #ffffff;
+    --text-color-dark: #2c3e50;
+    --text-color-light: #f8f9fa;
+    --border-color: #ced4da;
+    --shadow-light: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0; padding: 0; background: var(--background-light);
+    color: var(--text-color-dark); line-height: 1.6;
+}
+h1, h2, h3 { text-align: center; }
+h1 { color: var(--primary-color); margin: 30px 0 10px; font-size: 2.5rem; }
+h2 { color: var(--text-color-dark); margin: 10px 0 20px; font-size: 1.8rem; }
+h3 { color: var(--primary-color); margin-top: 30px; font-size: 1.3rem; }
+nav { display: flex; justify-content: center; flex-wrap: wrap; margin: 20px 0 40px; }
+nav button {
+    padding: 12px 22px; border: none; border-radius: 6px; background: var(--primary-color);
+    color: var(--text-color-light); font-size: 15px; cursor: pointer;
+    transition: background 0.3s, transform 0.2s; margin: 5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+nav button:hover { background: #0056b3; transform: translateY(-1px); }
+nav button.active-nav { background: #004c99; box-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.2); }
+.tab {
+    display: none; max-width: 800px; margin: 0 auto 50px; padding: 40px;
+    background: var(--background-white); border-radius: 12px; box-shadow: var(--shadow-light);
+    animation: fadeIn 0.5s ease-out;
+}
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.active { display: block; }
+label { display: block; margin: 20px 0 8px; font-weight: 600; color: #495057; }
+input[type="text"], input[type="number"], input[type="file"], select {
+    width: 100%; max-width: 500px; padding: 12px 15px; border-radius: 8px;
+    border: 1px solid #dee2e6; margin-bottom: 5px; font-size: 1rem; box-sizing: border-box;
+}
+.tab button {
+    padding: 12px 25px; border: none; border-radius: 6px; font-size: 1rem;
+    font-weight: 600; cursor: pointer; transition: background 0.3s, transform 0.2s;
+    margin: 25px 5px 15px 0; display: inline-block;
+}
+button[id^="start"], button[id="captureFaceBtn"], button[id="markManual"] { background: var(--primary-color); color: var(--text-color-light); }
+button[id^="export"], button[id="genReport"], button[id^="stop"], button[id="backupDB"] { background: var(--info-color); color: var(--text-color-light); }
+#videoPreview, #captureCanvas, #scanVideo {
+    display: block; margin: 25px auto; border: 5px solid var(--primary-color);
+    border-radius: 12px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    max-width: 90%; width: 450px; background-color: #000;
+}
+#captureCanvas { display: none; border-color: var(--secondary-color); }
+.status-msg { text-align: center; margin-top: 15px; font-size: 1rem; font-weight: 500; }
+.status-msg small { display: inline-block; padding: 8px 12px; border-radius: 6px; }
+.status-msg .error { color: var(--danger-color); background: rgba(220, 53, 69, 0.1); }
+.status-msg .success { color: var(--secondary-color); background: rgba(40, 167, 69, 0.1); }
+.status-msg .info { color: var(--info-color); background: rgba(23, 162, 184, 0.1);}
+.status-msg .warning { color: #856404; background: rgba(255, 193, 7, 0.1); }
+#scanHistory, #manualHistory, #stuList, #attList { max-width: 600px; margin: 15px auto; list-style: none; padding: 0; }
+#scanHistory li, #manualHistory li, #stuList li, #attList li {
+    background: var(--background-light); margin: 8px 0; padding: 10px 15px;
+    border-radius: 8px; font-size: 0.95rem; border-left: 5px solid var(--primary-color);
+}
+table {
+    width: 100%; margin: 20px auto 30px; border-collapse: separate; border-spacing: 0;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); border-radius: 12px; overflow: hidden;
+}
+th, td { padding: 12px 15px; text-align: center; border-bottom: 1px solid #e9ecef; }
+th { background: var(--primary-color); color: var(--text-color-light); font-weight: 600; text-transform: uppercase; font-size: 0.9rem; }
+tbody tr:nth-child(even) { background: #f8fafd; }
+</style>
+</head>
+<body>
+<h1>Face Recognition Attendance System</h1>
+
+<nav>
+    <button data-tab="enroll" class="active-nav">Enroll Face</button>
+    <button data-tab="scan">Mark Attendance</button>
+    <button data-tab="manual">Manual Attendance</button>
+    <button data-tab="students">Students</button>
+    <button data-tab="attendance">Attendance</button>
+    <button data-tab="reports">Reports</button>
+</nav>
+
+<div id="enroll" class="tab active">
+    <h2>Enroll/Update Face Model</h2>
+    <label for="genRoll">Roll:</label>
+    <input id="genRoll" type="text" placeholder="Student Roll Number" required><br>
+    <label for="genName">Name:</label>
+    <input id="genName" type="text" placeholder="Student Name" required><br>
+    <label for="genClass">Class:</label>
+    <input id="genClass" type="text" placeholder="e.g., 10A, BTech CS"><br>
+    <div style="text-align: center; margin-top: 20px;">
+        <button id="startCameraBtn">Start Camera</button>
+        <button id="captureFaceBtn" style="display: none;">Capture & Enroll Face</button>
+    </div>
+    <video id="videoPreview" autoplay playsinline muted width="450" height="337.5" style="display:none;"></video>
+    <canvas id="captureCanvas" width="450" height="337.5"></canvas>
+    <div id="genStatus" class="status-msg"></div>
+</div>
+
+<div id="scan" class="tab">
+    <h2>Mark Attendance via Face Scan</h2>
+    <div id="scanControls" style="text-align: center;">
+        <button id="startScan">Start Camera</button>
+        <button id="stopScan" style="display:none">Stop Camera</button>
+    </div>
+    <video id="scanVideo" autoplay playsinline muted width="450" height="337.5" style="display:none;"></video><br>
+    <canvas id="scanCanvas" style="display:none"></canvas>
+    <div id="scanResult" class="status-msg"><small class="info">Please start the camera to begin scanning.</small></div>
+    <h3>Recent Attendance History</h3>
+    <ul id="scanHistory"></ul>
+</div>
+
+<div id="manual" class="tab">
+    <h2>Manual Attendance</h2>
+    <label for="manualRoll">Enter Roll Number:</label>
+    <input type="text" id="manualRoll" placeholder="Roll Number"><br>
+    <button id="markManual">Mark Attendance</button>
+    <div id="manualResult" class="status-msg"></div>
+    <h3>Recent Manual History</h3>
+    <ul id="manualHistory"></ul>
+</div>
+
+<div id="students" class="tab">
+    <h2>Students List & Management</h2>
+    <label for="importCSV">Import Students from CSV:</label>
+    <input type="file" id="importCSV" accept=".csv">
+    <button id="exportStudents">Export Students CSV</button>
+    <button id="backupDB">Backup Database (JSON)</button>
+    <h3>Current Students</h3>
+    <ul id="stuList"></ul>
+</div>
+
+<div id="attendance" class="tab">
+    <h2>Raw Attendance Records</h2>
+    <button id="exportRawAttendance">Export Raw Attendance CSV</button>
+    <h3>All Attendance Entries (Latest 100)</h3>
+    <ul id="attList"></ul>
+</div>
+
+<div id="reports" class="tab">
+    <h2>Monthly Attendance Reports</h2>
+    <label for="reportMonth">Select Month:</label>
+    <select id="reportMonth"></select>
+    <label for="workingDays">Working Days in Month (0 for auto-calc):</label>
+    <input type="number" id="workingDays" placeholder="e.g. 22" value="22">
+    <button id="genReport">Generate Report</button>
+    <button id="exportStudentReport">Export Student Report CSV</button>
+    <button id="exportClassReport">Export Class Report CSV</button>
+    <h3>Student-wise Report</h3>
+    <table id="reportTable"><thead><tr><th>Roll</th><th>Name</th><th>Class</th><th>Month</th><th>Attended</th><th>Total</th><th>%</th></tr></thead><tbody></tbody></table>
+    <h3>Class-wise Report</h3>
+    <table id="classReportTable"><thead><tr><th>Class</th><th>Month</th><th>Students</th><th>Total Days</th><th>Total Attend</th><th>%</th></tr></thead><tbody></tbody></table>
+</div>
+
+<script>
+// ---------- IndexedDB Setup ----------
+const DB_NAME = 'AttendanceDB_Face';
+const DB_VERSION = 1;
+const STORE_STUDENTS = 'students';
+const STORE_ATTENDANCE = 'attendance';
+let db;
+
+function openDB() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        request.onupgradeneeded = (event) => {
+            db = event.target.result;
+            if (!db.objectStoreNames.contains(STORE_STUDENTS)) db.createObjectStore(STORE_STUDENTS, { keyPath: 'roll' });
+            if (!db.objectStoreNames.contains(STORE_ATTENDANCE)) {
+                const store = db.createObjectStore(STORE_ATTENDANCE, { keyPath: 'id', autoIncrement: true });
+                store.createIndex('roll_date', ['roll', 'date'], { unique: false });
+            }
+        };
+        request.onsuccess = (event) => { db = event.target.result; resolve(db); };
+        request.onerror = (event) => reject('IndexedDB error: ' + event.target.errorCode);
+    });
+}
+
+async function getData(storeName, key) {
+    if (!db) await openDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(storeName, 'readonly');
+        const store = tx.objectStore(storeName);
+        const request = key ? store.get(key) : store.getAll();
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+}
+
+async function putData(storeName, data) {
+    if (!db) await openDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(storeName, 'readwrite');
+        const store = tx.objectStore(storeName);
+        const request = store.put(data);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+    });
+}
+
+// ---------- Voice Synthesis ----------
+function speak(text) {
+    try {
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+            const utter = new SpeechSynthesisUtterance(text);
+            utter.lang = "en-IN";
+            window.speechSynthesis.speak(utter);
+        }
+    } catch (e) {
+        console.error('Speech synthesis error', e);
+    }
+}
+
+// ---------- Camera & Global State ----------
+let currentStream = null;
+let scanInterval = null;
+
+function stopCamera() {
+    if (currentStream) {
+        currentStream.getTracks().forEach(track => track.stop());
+        currentStream = null;
+    }
+    if (scanInterval) {
+        clearInterval(scanInterval);
+        scanInterval = null;
+    }
+    // Reset UI for both tabs
+    document.getElementById('videoPreview').style.display = 'none';
+    document.getElementById('captureFaceBtn').style.display = 'none';
+    document.getElementById('startCameraBtn').style.display = 'inline-block';
+    document.getElementById('scanVideo').style.display = 'none';
+    document.getElementById('stopScan').style.display = 'none';
+    document.getElementById('startScan').style.display = 'inline-block';
+}
+
+async function startCamera(videoElement) {
+    stopCamera();
+    try {
+        // FIXED: Using a generic `{ video: true }` constraint is more reliable
+        // on devices without a specific "environment" (rear) camera, like laptops.
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        videoElement.srcObject = stream;
+        videoElement.style.display = 'block';
+        await videoElement.play();
+        currentStream = stream;
+        return stream;
+    } catch (e) {
+        console.error("Camera access failed:", e);
+        alert("Camera access failed. Please ensure you have a working camera and have granted permission in your browser settings.");
+        return null;
+    }
+}
+
+function captureSnapshot(videoElement, canvasElement) {
+    canvasElement.width = videoElement.videoWidth;
+    canvasElement.height = videoElement.videoHeight;
+    canvasElement.getContext('2d').drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
+    return canvasElement.toDataURL('image/jpeg', 0.9);
+}
+
+// ---------- Tabs & UI Logic ----------
+document.addEventListener('DOMContentLoaded', () => {
+    openDB().then(() => {
+        console.log('DB ready');
+        document.querySelector('nav button').click(); // Activate first tab
+    });
+});
+
+document.querySelectorAll('nav button').forEach(btn => {
+    btn.addEventListener('click', async () => {
+        stopCamera();
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('nav button').forEach(b => b.classList.remove('active-nav'));
+        document.getElementById(btn.dataset.tab).classList.add('active');
+        btn.classList.add('active-nav');
+
+        if (btn.dataset.tab === 'students') await renderStudents();
+        if (btn.dataset.tab === 'attendance') await renderAttendance();
+        if (btn.dataset.tab === 'reports') {
+            await populateMonthFilter();
+            await generateAndRenderReports();
+        }
+    });
+});
+
+// ---------- Enroll Face ----------
+document.getElementById('startCameraBtn').addEventListener('click', async () => {
+    const stream = await startCamera(document.getElementById('videoPreview'));
+    if (stream) {
+        document.getElementById('startCameraBtn').style.display = 'none';
+        document.getElementById('captureFaceBtn').style.display = 'inline-block';
+        document.getElementById('captureCanvas').style.display = 'none';
+        document.getElementById('genStatus').innerHTML = '<small class="info">Ready to capture face.</small>';
+    }
+});
+
+document.getElementById('captureFaceBtn').addEventListener('click', async () => {
+    const roll = document.getElementById('genRoll').value.trim();
+    const name = document.getElementById('genName').value.trim();
+    const cls = document.getElementById('genClass').value.trim();
+    if (!roll || !name) { alert('Please enter both Roll Number and Name.'); return; }
+
+    const video = document.getElementById('videoPreview');
+    const canvas = document.getElementById('captureCanvas');
+    const imageDataUrl = captureSnapshot(video, canvas);
+    video.style.display = 'none';
+    canvas.style.display = 'block';
+    stopCamera();
+
+    const statusDiv = document.getElementById('genStatus');
+    statusDiv.innerHTML = '<small class="info">Processing on server...</small>';
+    try {
+        const response = await fetch('/api/add_face', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ roll, image: imageDataUrl })
+        });
+        const result = await response.json();
+        if (result.success) {
+            await putData(STORE_STUDENTS, { roll, name, class: cls || 'N/A' });
+            statusDiv.innerHTML = `<small class="success">✔ ${result.message}</small>`;
+            speak(`Face enrolled for ${name}`);
+        } else {
+            statusDiv.innerHTML = `<small class="error">❌ Enrollment Failed: ${result.message}</small>`;
+            speak('Enrollment failed.');
+        }
+    } catch (e) {
+        statusDiv.innerHTML = `<small class="error">❌ Connection Error: Ensure Flask server is running.</small>`;
+        speak('Server connection error.');
+    }
+});
+
+// ---------- Mark Attendance by Face Scan ----------
+document.getElementById('startScan').addEventListener('click', async () => {
+    const stream = await startCamera(document.getElementById('scanVideo'));
+    if (stream) {
+        document.getElementById('startScan').style.display = 'none';
+        document.getElementById('stopScan').style.display = 'inline-block';
+        document.getElementById('scanResult').innerHTML = '<small class="info">Scanning...</small>';
+        scanInterval = setInterval(recognizeFaceAttendance, 2500);
+        document.getElementById('scanHistory').innerHTML = '';
+    }
+});
+document.getElementById('stopScan').addEventListener('click', stopCamera);
+
+async function recognizeFaceAttendance() {
+    if (!currentStream) return;
+    const imageDataUrl = captureSnapshot(document.getElementById('scanVideo'), document.getElementById('scanCanvas'));
+    const statusDiv = document.getElementById('scanResult');
+    try {
+        const response = await fetch('/api/recognize_face', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: imageDataUrl })
+        });
+        const result = await response.json();
+        if (result.success && result.roll) {
+            await handleScan(result.roll, 'scanResult');
+        } else {
+            statusDiv.innerHTML = `<small class="error">❌ ${result.message || 'No match found.'}</small>`;
+        }
+    } catch (e) {
+        statusDiv.innerHTML = '<small class="error">❌ Server Connection Error.</small>';
+        speak('Server connection error.');
+        stopCamera();
+    }
+}
+
+// ---------- Core Attendance & Manual Logic ----------
+async function handleScan(roll, resultDivId) {
+    const resultDiv = document.getElementById(resultDivId);
+    if (!roll) {
+        resultDiv.innerHTML = `<small class="error">❌ Invalid Roll Data received.</small>`;
+        return;
+    }
+    try {
+        const student = await getData(STORE_STUDENTS, roll);
+        if (!student) {
+            resultDiv.innerHTML = `<small class="error">❌ Unrecognized Roll: ${roll}. Please enroll first.</small>`;
+            speak(`Unrecognized roll number`);
+            return;
+        }
+        const today = new Date().toISOString().slice(0, 10);
+        const allAttendance = await getData(STORE_ATTENDANCE);
+        if (allAttendance.find(r => r.roll === roll && r.date === today)) {
+            resultDiv.innerHTML = `<small class="warning">✔ Attendance already marked for ${student.name}.</small>`;
+            speak(`Attendance already marked for ${student.name}`);
+        } else {
+            await putData(STORE_ATTENDANCE, { roll, name: student.name, class: student.class, ts: Date.now(), date: today });
+            resultDiv.innerHTML = `<small class="success">✅ Attendance marked for ${student.name}.</small>`;
+            speak(`Attendance marked for ${student.name}`);
+        }
+        await showStudentHistory(roll, resultDivId === 'scanResult' ? 'scanHistory' : 'manualHistory');
+    } catch (e) {
+        resultDiv.innerHTML = `<small class="error">❌ DB error for ${roll}.</small>`;
+    }
+}
+document.getElementById('markManual').addEventListener('click', () => {
+    const roll = document.getElementById('manualRoll').value.trim();
+    if(roll) handleScan(roll, 'manualResult');
+    document.getElementById('manualRoll').value = '';
+});
+
+// ---------- History, Rendering, Reports & CSV ----------
+async function showStudentHistory(roll, ulId) {
+    const allRecs = await getData(STORE_ATTENDANCE);
+    const recs = allRecs.filter(r => r.roll === roll).sort((a, b) => b.ts - a.ts).slice(0, 5);
+    const ul = document.getElementById(ulId);
+    ul.innerHTML = recs.length ? '' : '<li>No records found.</li>';
+    recs.forEach(r => {
+        ul.innerHTML += `<li>${r.date} — ${r.name} (${r.class || 'N/A'})</li>`;
+    });
+}
+async function renderStudents() {
+    const students = await getData(STORE_STUDENTS);
+    const ul = document.getElementById('stuList');
+    students.sort((a,b) => a.roll.localeCompare(b.roll, undefined, {numeric: true}));
+    ul.innerHTML = students.length ? '' : '<li>No students found.</li>';
+    students.forEach(s => {
+        ul.innerHTML += `<li><b>Roll:</b> ${s.roll} — <b>Name:</b> ${s.name} — <b>Class:</b> ${s.class || 'N/A'}</li>`;
+    });
+}
+async function renderAttendance() {
+    const records = await getData(STORE_ATTENDANCE);
+    const ul = document.getElementById('attList');
+    records.sort((a, b) => b.ts - a.ts);
+    const displayRecords = records.slice(0, 100);
+    ul.innerHTML = displayRecords.length ? '' : '<li>No attendance records found.</li>';
+    displayRecords.forEach(r => {
+        const ts = new Date(r.ts).toLocaleTimeString();
+        ul.innerHTML += `<li>${r.date} ${ts} — <b>Roll:</b> ${r.roll} — <b>Name:</b> ${r.name}</li>`;
+    });
+}
+document.getElementById('genReport').addEventListener('click', generateAndRenderReports);
+async function populateMonthFilter() {
+    const records = await getData(STORE_ATTENDANCE);
+    const monthSet = new Set(records.map(r => r.date.substring(0, 7)));
+    const select = document.getElementById('reportMonth');
+    select.innerHTML = '<option value="all">All Months</option>';
+    Array.from(monthSet).sort().reverse().forEach(month => {
+        select.innerHTML += `<option value="${month}">${month}</option>`;
+    });
+}
+async function generateAndRenderReports() {
+    const students = await getData(STORE_STUDENTS);
+    let records = await getData(STORE_ATTENDANCE);
+    const workingDays = parseInt(document.getElementById('workingDays').value) || 0;
+    const selectedMonth = document.getElementById('reportMonth').value;
+
+    if (selectedMonth !== 'all') {
+        records = records.filter(r => r.date.startsWith(selectedMonth));
+    }
+
+    const studentReport = {};
+    records.forEach(r => {
+        const monthKey = r.date.substring(0, 7);
+        const stuKey = `${r.roll}|${monthKey}`;
+        if (!studentReport[stuKey]) {
+            const s = students.find(s => s.roll === r.roll) || {name: 'Unknown', class: 'N/A'};
+            studentReport[stuKey] = {roll: r.roll, name: s.name, class: s.class, month: monthKey, days: new Set()};
+        }
+        studentReport[stuKey].days.add(r.date);
+    });
+
+    const studentRows = Object.values(studentReport).map(item => {
+        const [year, month] = item.month.split('-').map(Number);
+        const totalDays = workingDays > 0 ? workingDays : new Date(year, month, 0).getDate();
+        const attended = item.days.size;
+        const perc = totalDays > 0 ? ((attended / totalDays) * 100).toFixed(1) : '0.0';
+        return {...item, attended, totalDays, perc};
+    });
+
+    const classReport = {};
+    studentRows.forEach(r => {
+        const key = `${r.class}|${r.month}`;
+        if (!classReport[key]) classReport[key] = {class: r.class, month: r.month, totalStudents: 0, totalDays: r.totalDays, totalAttendance: 0, uniqueStudents: new Set()};
+        if (!classReport[key].uniqueStudents.has(r.roll)) {
+            classReport[key].totalStudents++;
+            classReport[key].uniqueStudents.add(r.roll);
+        }
+        classReport[key].totalAttendance += r.attended;
+    });
+
+    const classRows = Object.values(classReport).map(c => {
+        const maxPossible = c.totalStudents * c.totalDays;
+        const perc = maxPossible > 0 ? ((c.totalAttendance / maxPossible) * 100).toFixed(1) : '0.0';
+        return {...c, perc};
+    });
+
+    renderTable('#reportTable tbody', studentRows, '<tr><td colspan="7">No data for this period.</td></tr>', r => `<td>${r.roll}</td><td>${r.name}</td><td>${r.class}</td><td>${r.month}</td><td>${r.attended}</td><td>${r.totalDays}</td><td>${r.perc}%</td>`);
+    renderTable('#classReportTable tbody', classRows, '<tr><td colspan="6">No data for this period.</td></tr>', c => `<td>${c.class}</td><td>${c.month}</td><td>${c.totalStudents}</td><td>${c.totalDays}</td><td>${c.totalAttendance}</td><td>${c.perc}%</td>`);
+}
+function renderTable(selector, data, emptyHtml, rowHtml) {
+    const tbody = document.querySelector(selector);
+    tbody.innerHTML = data.length === 0 ? emptyHtml : data.map(item => `<tr>${rowHtml(item)}</tr>`).join('');
+}
+
+// ... CSV and Backup functions can be added here from your previous version if needed ...
+
+</script>
+</body>
+</html>
