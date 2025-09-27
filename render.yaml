@@ -3,10 +3,15 @@ services:
     name: face-recognition-app
     env: python
     plan: free
+    # FIX: Added 2 spaces before this line
     preBuildCommand: "apt-get update && apt-get install -y build-essential cmake"
+    # FIX: Added 2 spaces before this line
     buildCommand: "pip install --no-cache-dir -r requirements.txt"
+    # FIX: Added 2 spaces before this line
     startCommand: "gunicorn --worker-class gevent --bind 0.0.0.0:$PORT app:app"
+    # FIX: Added 2 spaces before this line
     disks:
+      # FIX: And these lines are indented relative to 'disks'
       - name: face-data
         mountPath: /app/data
         sizeGB: 1
