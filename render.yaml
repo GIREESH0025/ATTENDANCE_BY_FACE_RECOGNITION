@@ -1,11 +1,20 @@
 services:
   - type: web
-    name: face-recognition-app
+    name: face-attendance-app
     env: python
     plan: free
     buildCommand: |
-      # Install system dependencies
       apt-get update && apt-get install -y build-essential cmake libopenblas-dev liblapack-dev
-      # Install Python dependencies
       pip install --no-cache-dir -r requirements.txt
-    startCommand: gunicorn --worker-class gevent --bind 0.0.0.0:$PORT app:app
+    startCommand: "gunicorn app:app --worker-class gevent --bind 0.0.0.0:$PORT"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: REDIS_URL
+        fromDatabase:
+          name: face-encodings-db
+          property: connectionString
+
+databases:
+  - name: face-encodings-db
+    plan: free
