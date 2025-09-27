@@ -9,7 +9,3 @@ services:
       # Install Python dependencies
       pip install --no-cache-dir -r requirements.txt
     startCommand: gunicorn --worker-class gevent --bind 0.0.0.0:$PORT app:app
-    disks:
-      - name: face-data
-        mountPath: /app/data
-        sizeGB: 1
