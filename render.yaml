@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: face-recognition-app
+    env: python
+    plan: free
+    preBuildCommand: "apt-get update && apt-get install -y build-essential cmake"
+    buildCommand: "pip install --no-cache-dir -r requirements.txt"
+    startCommand: "gunicorn --worker-class gevent --bind 0.0.0.0:$PORT app:app"
+    disks:
+      - name: face-data
+        mountPath: /app/data
+        sizeGB: 1

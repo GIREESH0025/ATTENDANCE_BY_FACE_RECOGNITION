@@ -1,0 +1,8 @@
+Flask
+Flask-Cors
+numpy
+Pillow
+face_recognition
+dlib
+gunicorn
+gevent
