@@ -61,7 +61,7 @@ button[id^="export"], button[id="genReport"], button[id^="stop"], button[id="bac
     max-width: 90%; width: 450px; background-color: #000;
 }
 #captureCanvas { display: none; border-color: var(--secondary-color); }
-.status-msg { text-align: center; margin-top: 15px; font-size: 1rem; font-weight: 500; }
+.status-msg { text-align: center; margin-top: 15px; font-size: 1rem; font-weight: 500; min-height: 40px;}
 .status-msg small { display: inline-block; padding: 8px 12px; border-radius: 6px; }
 .status-msg .error { color: var(--danger-color); background: rgba(220, 53, 69, 0.1); }
 .status-msg .success { color: var(--secondary-color); background: rgba(40, 167, 69, 0.1); }
@@ -188,7 +188,6 @@ function openDB() {
         request.onerror = (event) => reject('IndexedDB error: ' + event.target.errorCode);
     });
 }
-
 async function getData(storeName, key) {
     if (!db) await openDB();
     return new Promise((resolve, reject) => {
@@ -199,13 +198,12 @@ async function getData(storeName, key) {
         request.onerror = () => reject(request.error);
     });
 }
-
 async function putData(storeName, data) {
     if (!db) await openDB();
     return new Promise((resolve, reject) => {
         const tx = db.transaction(storeName, 'readwrite');
         const store = tx.objectStore(storeName);
-        const request = store.put(data);
+        store.put(data);
         tx.oncomplete = () => resolve();
         tx.onerror = () => reject(tx.error);
     });
@@ -220,9 +218,7 @@ function speak(text) {
             utter.lang = "en-IN";
             window.speechSynthesis.speak(utter);
         }
-    } catch (e) {
-        console.error('Speech synthesis error', e);
-    }
+    } catch (e) { console.error('Speech synthesis error', e); }
 }
 
 // ---------- Camera & Global State ----------
@@ -238,7 +234,6 @@ function stopCamera() {
         clearInterval(scanInterval);
         scanInterval = null;
     }
-    // Reset UI for both tabs
     document.getElementById('videoPreview').style.display = 'none';
     document.getElementById('captureFaceBtn').style.display = 'none';
     document.getElementById('startCameraBtn').style.display = 'inline-block';
@@ -250,8 +245,6 @@ function stopCamera() {
 async function startCamera(videoElement) {
     stopCamera();
     try {
-        // FIXED: Using a generic `{ video: true }` constraint is more reliable
-        // on devices without a specific "environment" (rear) camera, like laptops.
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
         videoElement.srcObject = stream;
         videoElement.style.display = 'block';
@@ -275,8 +268,7 @@ function captureSnapshot(videoElement, canvasElement) {
 // ---------- Tabs & UI Logic ----------
 document.addEventListener('DOMContentLoaded', () => {
     openDB().then(() => {
-        console.log('DB ready');
-        document.querySelector('nav button').click(); // Activate first tab
+        document.querySelector('nav button').click();
     });
 });
 
@@ -450,10 +442,14 @@ async function populateMonthFilter() {
     const records = await getData(STORE_ATTENDANCE);
     const monthSet = new Set(records.map(r => r.date.substring(0, 7)));
     const select = document.getElementById('reportMonth');
+    const currentVal = select.value;
     select.innerHTML = '<option value="all">All Months</option>';
     Array.from(monthSet).sort().reverse().forEach(month => {
         select.innerHTML += `<option value="${month}">${month}</option>`;
     });
+    if (Array.from(monthSet).includes(currentVal)) {
+        select.value = currentVal;
+    }
 }
 async function generateAndRenderReports() {
     const students = await getData(STORE_STUDENTS);
@@ -482,7 +478,7 @@ async function generateAndRenderReports() {
         const attended = item.days.size;
         const perc = totalDays > 0 ? ((attended / totalDays) * 100).toFixed(1) : '0.0';
         return {...item, attended, totalDays, perc};
-    });
+    }).sort((a,b) => a.roll.localeCompare(b.roll, undefined, {numeric: true}));
 
     const classReport = {};
     studentRows.forEach(r => {
@@ -499,7 +495,7 @@ async function generateAndRenderReports() {
         const maxPossible = c.totalStudents * c.totalDays;
         const perc = maxPossible > 0 ? ((c.totalAttendance / maxPossible) * 100).toFixed(1) : '0.0';
         return {...c, perc};
-    });
+    }).sort((a,b) => a.class.localeCompare(b.class));
 
     renderTable('#reportTable tbody', studentRows, '<tr><td colspan="7">No data for this period.</td></tr>', r => `<td>${r.roll}</td><td>${r.name}</td><td>${r.class}</td><td>${r.month}</td><td>${r.attended}</td><td>${r.totalDays}</td><td>${r.perc}%</td>`);
     renderTable('#classReportTable tbody', classRows, '<tr><td colspan="6">No data for this period.</td></tr>', c => `<td>${c.class}</td><td>${c.month}</td><td>${c.totalStudents}</td><td>${c.totalDays}</td><td>${c.totalAttendance}</td><td>${c.perc}%</td>`);
@@ -508,9 +504,6 @@ function renderTable(selector, data, emptyHtml, rowHtml) {
     const tbody = document.querySelector(selector);
     tbody.innerHTML = data.length === 0 ? emptyHtml : data.map(item => `<tr>${rowHtml(item)}</tr>`).join('');
 }
-
-// ... CSV and Backup functions can be added here from your previous version if needed ...
-
 </script>
 </body>
 </html>
