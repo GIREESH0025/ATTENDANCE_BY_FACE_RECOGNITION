@@ -5,7 +5,6 @@
   <title>Face Attendance System</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-  <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
 </head>
 <body>
   <h1>🎥 Face Attendance System</h1>
@@ -28,18 +27,18 @@
         <label for="studentName">Name:</label>
         <input id="studentName" type="text" placeholder="Enter Student's Full Name" required>
       </div>
-       <div class="form-group">
+        <div class="form-group">
         <label for="studentClass">Class:</label>
         <input id="studentClass" type="text" placeholder="e.g., 10-A, B.Tech CSE" required>
       </div>
-      <video id="video" autoplay muted></video><br>
+      <video id="video" autoplay muted playsinline></video><br>
       <button id="enrollBtn" class="btn-primary">📸 Capture & Enroll</button>
       <p id="enrollStatus" class="status-message"></p>
     </div>
 
     <div id="scan" class="tab-content hidden">
       <h2>Scan for Attendance</h2>
-      <video id="scanVideo" autoplay muted></video><br>
+      <video id="scanVideo" autoplay muted playsinline></video><br>
       <button id="scanBtn" class="btn-primary">📸 Capture & Recognize</button>
       <p id="scanStatus" class="status-message"></p>
     </div>
@@ -82,11 +81,11 @@
           </tr>
         </thead>
         <tbody>
-          </tbody>
+        </tbody>
       </table>
 
       <h3>Overall Class Report</h3>
-       <table id="classReportTable">
+        <table id="classReportTable">
         <thead>
           <tr>
             <th>Total Students</th>
@@ -95,7 +94,7 @@
           </tr>
         </thead>
         <tbody>
-            </tbody>
+          </tbody>
       </table>
     </div>
   </main>
