@@ -1,107 +1,102 @@
-/* CSS Variables for easy theme management */
+/* --- Global Styles & Variables --- */
 :root {
-    --primary-color: #0d6efd;
+    --primary-color: #007bff;
+    --primary-hover-color: #0056b3;
     --background-color: #f0f2f5;
-    --card-background: #ffffff;
+    --card-background-color: #ffffff;
     --text-color: #333;
-    --border-color: #dee2e6;
-    --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    --border-color: #ddd;
+    --shadow-color: rgba(0, 0, 0, 0.1);
+    --success-color: #28a745;
+    --error-color: #dc3545;
+    --warning-color: #ffc107;
 }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    margin: 0;
-    padding: 20px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     background-color: var(--background-color);
     color: var(--text-color);
-    text-align: center;
+    margin: 0;
+    padding: 20px;
 }
 
 h1 {
-    color: var(--text-color);
-    margin-bottom: 2rem;
+    text-align: center;
+    color: var(--primary-color);
+    font-size: 2.5rem;
+    margin-bottom: 25px;
 }
 
-h2 {
-    color: var(--text-color);
-    margin-top: 0;
-    margin-bottom: 1.5rem;
-    font-weight: 600;
-}
-
-h3 {
-    text-align: left;
-    margin-top: 2rem;
-    margin-bottom: 0.5rem;
-    font-weight: 600;
-}
-
-
-/* Tab Navigation Styling */
-.tabs {
+/* --- Navigation Tabs --- */
+nav.tabs {
     display: flex;
     justify-content: center;
     gap: 10px;
-    margin-bottom: 2rem;
+    margin-bottom: 30px;
 }
 
-.tabs button {
-    padding: 10px 20px;
+nav.tabs button {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 20px;
+    padding: 10px 25px;
     font-size: 1rem;
     font-weight: 500;
-    color: #fff;
-    background-color: var(--primary-color);
-    border: none;
-    border-radius: 8px;
     cursor: pointer;
-    transition: background-color 0.2s ease-in-out, transform 0.1s ease;
+    transition: background-color 0.3s ease;
 }
 
-.tabs button:hover {
-    background-color: #0b5ed7;
-    transform: translateY(-2px);
+nav.tabs button:hover {
+    background-color: var(--primary-hover-color);
 }
 
-.tabs button.active {
-    background-color: #0a58ca;
-    box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
-    transform: none;
+nav.tabs button.active {
+    background-color: var(--primary-hover-color);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-
-/* Main Content Card */
-.tab-content {
+/* --- Main Content Card --- */
+main {
     max-width: 600px;
     margin: 0 auto;
-    padding: 2.5rem;
-    background-color: var(--card-background);
+    background-color: var(--card-background-color);
+    padding: 40px;
     border-radius: 12px;
-    box-shadow: var(--shadow);
-    text-align: left; /* Align form elements to the left */
+    box-shadow: 0 4px 12px var(--shadow-color);
 }
 
-/* Form Grouping */
+.tab-content.hidden {
+    display: none;
+}
+
+.tab-content h2 {
+    text-align: center;
+    font-size: 1.8rem;
+    margin-top: 0;
+    margin-bottom: 30px;
+}
+
 .form-group {
-    margin-bottom: 1.5rem;
+    margin-bottom: 20px;
 }
 
 label {
     display: block;
-    margin-bottom: 0.5rem;
     font-weight: 600;
-    color: #555;
+    margin-bottom: 8px;
 }
 
 input[type="text"],
 input[type="number"],
 select {
     width: 100%;
-    padding: 12px 15px;
-    font-size: 1rem;
+    padding: 12px;
     border: 1px solid var(--border-color);
     border-radius: 8px;
-    box-sizing: border-box; /* Important for padding and width calculation */
-    transition: border-color 0.2s, box-shadow 0.2s;
+    font-size: 1rem;
+    box-sizing: border-box;
+    transition: border-color 0.3s, box-shadow 0.3s;
 }
 
 input[type="text"]:focus,
@@ -109,99 +104,81 @@ input[type="number"]:focus,
 select:focus {
     outline: none;
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.2);
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.2);
 }
 
-/* Button inside the card */
-.btn-primary {
-    display: block;
-    width: 100%;
-    padding: 12px;
+/* --- Buttons --- */
+.btn-primary, .btn-secondary {
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 25px;
     font-size: 1rem;
     font-weight: 600;
-    color: #fff;
-    background-color: var(--primary-color);
-    border: none;
-    border-radius: 8px;
     cursor: pointer;
-    transition: background-color 0.2s ease-in-out;
-    margin-top: 1rem;
-}
-
-.btn-primary:hover {
-    background-color: #0b5ed7;
-}
-
-/* Video element styling */
-video {
+    display: block;
     width: 100%;
-    height: auto;
+    margin-top: 10px;
+    text-align: center;
+    transition: background-color 0.3s ease;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+}
+.btn-primary:hover {
+    background-color: var(--primary-hover-color);
+}
+.btn-secondary {
+    background-color: #6c757d;
+    margin-top: 20px;
+}
+.btn-secondary:hover {
+    background-color: #5a6268;
+}
+
+/* --- Other Elements --- */
+video {
+    display: block;
+    width: 100%;
+    max-width: 400px;
+    margin: 20px auto;
     border-radius: 8px;
     background-color: #000;
-    border: 1px solid var(--border-color);
-    margin-top: 0.5rem;
-    display: block; /* Ensures it behaves like a block element */
+    border: 3px solid var(--border-color);
+    transform: scaleX(-1); /* Mirror the video */
 }
 
-/* Status message for feedback */
 .status-message {
-    margin-top: 1rem;
     text-align: center;
+    margin-top: 20px;
     font-weight: 500;
-    min-height: 1.2em; /* Prevents layout shift */
+    min-height: 24px;
+    padding: 10px;
+    border-radius: 8px;
 }
+.status-message.success { color: var(--success-color); background-color: rgba(40, 167, 69, 0.1); }
+.status-message.error { color: var(--error-color); background-color: rgba(220, 53, 69, 0.1); }
+.status-message.warning { color: #856404; background-color: rgba(255, 193, 7, 0.1); }
+.status-message.info { color: #004085; background-color: rgba(0, 123, 255, 0.1); }
 
-/* Utility class from your script.js */
-.hidden {
-    display: none;
-}
-
-/* Divider line */
 .divider {
-    border: none;
-    border-top: 1px solid var(--border-color);
-    margin: 2rem 0;
+    border: 0;
+    height: 1px;
+    background: #eee;
+    margin: 30px 0;
 }
 
-/* Report Tables */
 table {
     width: 100%;
     border-collapse: collapse;
-    margin-top: 1rem;
-    margin-bottom: 2rem;
+    margin-top: 20px;
 }
-
 th, td {
     padding: 12px;
     text-align: left;
     border-bottom: 1px solid var(--border-color);
 }
-
 th {
     background-color: #f8f9fa;
-    font-weight: 600;
-}
-
-tbody tr:hover {
-    background-color: #f1f3f5;
-}
-
-/* Secondary Button for CSV Export */
-.btn-secondary {
-    /* FIX: 'display: inline-block;' is removed as it's redundant with float. */
-    padding: 8px 16px;
-    font-size: 0.9rem;
-    color: var(--primary-color);
-    background-color: transparent;
-    border: 1px solid var(--primary-color);
-    border-radius: 8px;
-    cursor: pointer;
-    transition: background-color 0.2s, color 0.2s;
-    margin-bottom: 1rem;
-    float: right; /* Aligns button to the right of the heading */
-}
-
-.btn-secondary:hover {
-    background-color: var(--primary-color);
-    color: #fff;
 }
