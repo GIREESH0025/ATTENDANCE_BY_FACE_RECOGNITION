@@ -1,123 +1,161 @@
-from flask import Flask, render_template, request, jsonify
 import os
 import json
 import base64
-import numpy as np
+from io import BytesIO
 from PIL import Image
+import numpy as np
 import face_recognition
-import io
-
-# Try Valkey (Redis-compatible) else fallback to JSON
-VALKEY_URL = os.getenv("VALKEY_URL")
-faces_db = {}
-if VALKEY_URL:
-    import redis
-    redis_client = redis.from_url(VALKEY_URL)
-else:
-    redis_client = None
+from flask import Flask, request, jsonify, render_template
 
 app = Flask(__name__)
 
-# ------------------ Face DB (keyed by Roll Number) ------------------
-def load_faces():
-    """Loads faces from Redis or a local JSON file."""
-    global faces_db
-    if redis_client:
-        all_keys = redis_client.keys("face:*")
-        for key in all_keys:
-            roll = key.decode().split(":", 1)[1]
-            faces_db[roll] = json.loads(redis_client.get(key).decode())
-        print(f"Loaded {len(faces_db)} faces from Redis.")
+# --- Face Database Management ---
+FACE_DB_PATH = 'face_encodings.json'
+KNOWN_FACES = []
+
+def load_face_db():
+    """
+    Loads known face encodings from a JSON file.
+    This corrected version handles errors and ensures the data is a list of dicts.
+    """
+    global KNOWN_FACES
+    if os.path.exists(FACE_DB_PATH):
+        try:
+            with open(FACE_DB_PATH, 'r') as f:
+                data = json.load(f)
+                # Ensure data is a list of dictionaries with 'roll' and 'encoding'
+                if isinstance(data, list) and all('roll' in item and 'encoding' in item for item in data):
+                    KNOWN_FACES = [
+                        {'roll': item['roll'], 'encoding': np.array(item['encoding'])}
+                        for item in data
+                    ]
+                    print(f"Loaded {len(KNOWN_FACES)} known face encodings.")
+                else:
+                    raise ValueError("JSON format is incorrect.")
+        except (json.JSONDecodeError, ValueError, KeyError) as e:
+            # If the file is corrupted or in the wrong format, start fresh
+            print(f"Error reading {FACE_DB_PATH}: {e}. Starting with an empty database.")
+            KNOWN_FACES = []
     else:
-        if os.path.exists("face_encodings.json"):
-            with open("face_encodings.json", "r") as f:
-                faces_db = json.load(f)
-            print(f"Loaded {len(faces_db)} faces from face_encodings.json.")
+        KNOWN_FACES = []
+        print("No existing face database found. A new one will be created.")
 
-def save_face(roll, encoding):
-    """Saves a single face encoding to the database."""
-    global faces_db
-    faces_db[roll] = encoding.tolist()
-    if redis_client:
-        redis_client.set(f"face:{roll}", json.dumps(encoding.tolist()))
-    else:
-        with open("face_encodings.json", "w") as f:
-            json.dump(faces_db, f)
-    print(f"Saved encoding for roll: {roll}")
+def save_face_db():
+    """
+    Saves known face encodings to a JSON file.
+    This corrected version ensures data is saved as a list of dictionaries.
+    """
+    serializable_data = [
+        {'roll': item['roll'], 'encoding': item['encoding'].tolist()}
+        for item in KNOWN_FACES
+    ]
+    with open(FACE_DB_PATH, 'w') as f:
+        json.dump(serializable_data, f, indent=2)
+    print(f"Saved {len(KNOWN_FACES)} face encodings to {FACE_DB_PATH}.")
 
+# --- Utility Functions ---
+def decode_image(base64_string):
+    """Decodes a base64 string into a PIL Image object."""
+    try:
+        if "," in base64_string:
+            base64_string = base64_string.split(',')[1]
+        image_data = base64.b64decode(base64_string)
+        return Image.open(BytesIO(image_data))
+    except Exception as e:
+        print(f"Error decoding image: {e}")
+        return None
 
-load_faces()
+# --- API Endpoints ---
+@app.route('/')
+def home():
+    """Serves the main HTML file from the 'templates' folder."""
+    return render_template('index.html')
 
-# ------------------ Routes ------------------
-@app.route("/")
-def index():
-    return render_template("index.html")
-
-@app.route("/api/add_face", methods=["POST"])
+@app.route('/api/add_face', methods=['POST'])
 def add_face():
-    """Receives image and roll number, then saves the face encoding."""
+    """Receives an image, encodes it, and saves it."""
     data = request.json
-    # FIX: Trim whitespace from the incoming roll number before using it.
-    roll = data.get("roll", "").strip()
-    image_data = data.get("image")
+    roll = data.get('roll')
+    image_b64 = data.get('image')
 
-    if not roll or not image_data:
-        return jsonify({"status": "error", "message": "Missing roll number or image"}), 400
+    if not roll or not image_b64:
+        return jsonify({"status": "error", "message": "Missing roll or image data"}), 400
 
     try:
-        img_bytes = base64.b64decode(image_data.split(",")[1])
-        img = Image.open(io.BytesIO(img_bytes))
-        rgb_img = np.array(img.convert("RGB"))
+        img = decode_image(image_b64)
+        if img is None:
+            return jsonify({"status": "error", "message": "Invalid image data"}), 400
 
-        encodings = face_recognition.face_encodings(rgb_img)
-        if len(encodings) != 1:
-            return jsonify({"status": "error", "message": "Image must contain exactly one clear face"}), 400
+        rgb_img = np.array(img.convert('RGB'))
+        face_locations = face_recognition.face_locations(rgb_img)
+        face_encodings = face_recognition.face_encodings(rgb_img, face_locations)
 
-        save_face(roll, encodings[0])
-        return jsonify({"status": "success", "message": f"Face enrolled for Roll No: {roll}"})
+        if not face_encodings:
+            return jsonify({"status": "error", "message": "No face found in the image."})
+        if len(face_encodings) > 1:
+            return jsonify({"status": "error", "message": "More than one face found."})
+
+        new_encoding = face_encodings[0]
+        
+        found = False
+        for item in KNOWN_FACES:
+            if item['roll'] == roll:
+                item['encoding'] = new_encoding
+                found = True
+                break
+        
+        if not found:
+            KNOWN_FACES.append({'roll': roll, 'encoding': new_encoding})
+
+        save_face_db()
+        return jsonify({"status": "success", "message": f"Face for Roll {roll} saved."})
+
     except Exception as e:
         print(f"Error in add_face: {e}")
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": f"Server error: {str(e)}"}), 500
 
-@app.route("/api/recognize_face", methods=["POST"])
+@app.route('/api/recognize_face', methods=['POST'])
 def recognize_face():
-    """Receives an image and returns the roll number of the recognized face."""
+    """Receives an image and compares it against the known faces."""
     data = request.json
-    image_data = data.get("image")
-    if not image_data:
-        return jsonify({"status": "error", "message": "Missing image"}), 400
+    image_b64 = data.get('image')
+    
+    if not image_b64:
+        return jsonify({"status": "error", "message": "Missing image data"}), 400
+    if not KNOWN_FACES:
+        return jsonify({"status": "error", "roll": None, "message": "No faces in database."})
 
-    if not faces_db:
-        return jsonify({"status": "error", "message": "No faces enrolled in the database"})
-        
     try:
-        img_bytes = base64.b64decode(image_data.split(",")[1])
-        img = Image.open(io.BytesIO(img_bytes))
-        rgb_img = np.array(img.convert("RGB"))
+        img = decode_image(image_b64)
+        if img is None:
+            return jsonify({"status": "error", "message": "Invalid image data"}), 400
 
-        unknown_encodings = face_recognition.face_encodings(rgb_img)
-        if not unknown_encodings:
-            return jsonify({"status": "error", "message": "No face detected in the image"})
+        rgb_img = np.array(img.convert('RGB'))
+        face_locations = face_recognition.face_locations(rgb_img)
+        face_encodings = face_recognition.face_encodings(rgb_img, face_locations)
 
-        unknown_encoding = unknown_encodings[0]
-        known_encodings = [np.array(v) for v in faces_db.values()]
-        known_rolls = list(faces_db.keys())
+        if not face_encodings:
+            return jsonify({"status": "error", "roll": None, "message": "No face detected."})
 
-        matches = face_recognition.compare_faces(known_encodings, unknown_encoding, tolerance=0.55)
+        known_encodings = [item['encoding'] for item in KNOWN_FACES]
+        known_rolls = [item['roll'] for item in KNOWN_FACES]
+
+        matches = face_recognition.compare_faces(known_encodings, face_encodings[0], tolerance=0.55)
         
+        recognized_roll = None
         if True in matches:
             first_match_index = matches.index(True)
-            matched_roll = known_rolls[first_match_index]
-            print(f"Match found! Roll: {matched_roll}")
-            # FIX: Ensure the returned roll number is also trimmed.
-            return jsonify({"status": "success", "roll": matched_roll.strip()})
+            recognized_roll = known_rolls[first_match_index]
         
-        print("No match found for the provided face.")
-        return jsonify({"status": "error", "message": "Unknown face. Not found in database."})
+        if recognized_roll:
+            return jsonify({"status": "success", "roll": recognized_roll, "message": "Match found!"})
+        else:
+            return jsonify({"status": "error", "roll": None, "message": "No match found."})
 
     except Exception as e:
         print(f"Error in recognize_face: {e}")
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "roll": None, "message": f"Server error: {str(e)}"}), 500
 
-if __name__ == "__main__":
-    app.run(debug=True)
+if __name__ == '__main__':
+    load_face_db()
+    app.run(host='0.0.0.0', port=5000, debug=True)
