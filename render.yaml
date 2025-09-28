@@ -1,20 +1,19 @@
 services:
   - type: web
-    name: face-attendance-app
+    name: face-recognition-app
     env: python
     plan: free
-    buildCommand: |
-      apt-get update && apt-get install -y build-essential cmake libopenblas-dev liblapack-dev
-      pip install --no-cache-dir -r requirements.txt
-    startCommand: "gunicorn app:app --worker-class gevent --bind 0.0.0.0:$PORT"
+    python_version: "3.11"  # Set Python version at service level
     envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.9
+      # Optional: Add Redis URL if using Redis
       - key: REDIS_URL
-        fromDatabase:
-          name: face-encodings-db
-          property: connectionString
-
-databases:
-  - name: face-encodings-db
-    plan: free
+        value: "redis://<internal-redis-url>:6379"
+    buildCommand: |
+      # Update system packages and install dependencies for dlib/face-recognition
+      apt-get update && \
+      apt-get install -y build-essential cmake && \
+      # Upgrade pip
+      python -m pip install --upgrade pip && \
+      # Install Python dependencies
+      pip install -r requirements.txt
+    startCommand: "gunicorn app:app"  # Make sure your Flask app is in app.py with 'app' instance
